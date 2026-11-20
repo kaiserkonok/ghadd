@@ -183,8 +183,9 @@ class BlockerVpnService : VpnService() {
         private const val DNS_IP = "10.111.222.1"
         private val DNS_IP_BYTES = byteArrayOf(10, 111, 222.toByte(), 1)
 
-        // Cloudflare "for Families" (also filters adult content) first, Quad9 as backup.
-        private val UPSTREAMS = listOf("1.1.1.3", "1.0.0.3", "9.9.9.9")
+        // Plain resolvers only. Do NOT use "family" resolvers (e.g. 1.1.1.3): they force
+        // SafeSearch on Google, which breaks normal searching. Ghadd does its own filtering.
+        private val UPSTREAMS = listOf("1.1.1.1", "9.9.9.9", "8.8.8.8")
 
         // Public resolvers apps could use to bypass us. Packets to these are dropped.
         private val DROPPED_DNS_IPS = listOf(
