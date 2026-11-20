@@ -83,6 +83,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         tick++
+        // The filter was turned on before but isn't running (killed, crashed, updated): restart it.
+        if (Prefs.filterWanted && !AppState.vpnRunning && VpnService.prepare(this) == null) startVpn()
     }
 
     private fun enableFilter() {
@@ -91,6 +93,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startVpn() {
+        Prefs.filterWanted = true
         startService(Intent(this, BlockerVpnService::class.java))
     }
 

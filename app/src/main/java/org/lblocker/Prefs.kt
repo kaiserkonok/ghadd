@@ -21,6 +21,13 @@ object Prefs {
         }
     }
 
+    /** True once the user has turned the porn filter on; used to restart it after reboot/update. */
+    var filterWanted: Boolean
+        get() = sp.getBoolean("filter_wanted", false)
+        set(value) {
+            sp.edit().putBoolean("filter_wanted", value).apply()
+        }
+
     // ---- blocked apps -------------------------------------------------------------------
 
     var blockedApps: Set<String>
