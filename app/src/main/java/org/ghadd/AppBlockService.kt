@@ -14,10 +14,25 @@ import android.view.accessibility.AccessibilityEvent
 class AppBlockService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private var current: String? = null
+    private var lastFilterCheck = 0L
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        // Android (re)connected us, e.g. after the phone killed Ghadd: bring the filter back too.
+        KeepAlive.startFilter(this)
+    }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
+
+        // Watchdog: every 30s of phone use, make sure the porn filter is still running.
+        val now = System.currentTimeMillis()
+        if (now - lastFilterCheck > 30_000) {
+            lastFilterCheck = now
+            if (!AppState.vpnRunning) KeepAlive.startFilter(this)
+        }
+
         if (pkg == packageName) return
         current = pkg
         handler.removeCallbacksAndMessages(null)

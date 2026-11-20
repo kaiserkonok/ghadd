@@ -1,7 +1,13 @@
 package org.ghadd
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.net.VpnService
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
@@ -16,6 +22,7 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /** Shared, observable app state (read by the UI). */
@@ -38,14 +45,49 @@ class BlockerVpnService : VpnService() {
     private var running = false
     private var tun: ParcelFileDescriptor? = null
     private var worker: Thread? = null
-    private val pool = Executors.newFixedThreadPool(6)
+    private var pool: ExecutorService = Executors.newFixedThreadPool(6)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Must happen first: a service started with startForegroundService() has only a
+        // few seconds to call startForeground(), even if setting up the VPN then fails.
+        goForeground()
         if (!running) start()
         return START_STICKY
     }
 
+    /**
+     * Runs the filter as a foreground service with a permanent notification. Android and
+     * phone makers (Vivo, Xiaomi, ...) are far less likely to kill a foreground service.
+     */
+    private fun goForeground() {
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL, "Protection status", NotificationManager.IMPORTANCE_LOW)
+                .apply { setShowBadge(false) }
+        )
+        val open = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
+        )
+        val n = Notification.Builder(this, CHANNEL)
+            .setSmallIcon(R.drawable.ic_notif)
+            .setContentTitle("Ghadd is protecting you")
+            .setContentText("Porn filter and app blocking are on.")
+            .setOngoing(true)
+            .setContentIntent(open)
+            .build()
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            } else {
+                startForeground(NOTIFICATION_ID, n)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "startForeground failed", e)
+        }
+    }
+
     private fun start() {
+        if (pool.isShutdown) pool = Executors.newFixedThreadPool(6)
         val builder = Builder()
             .setSession("Ghadd")
             .setMtu(1500)
@@ -173,7 +215,10 @@ class BlockerVpnService : VpnService() {
     }
 
     override fun onRevoke() {
+        // VPN turned off in Android settings or taken over by another VPN app.
         shutdown()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
         super.onRevoke()
     }
 
@@ -197,6 +242,8 @@ class BlockerVpnService : VpnService() {
     companion object {
         private const val TAG = "BlockerVpn"
         private const val UPDATE_INTERVAL_MS = 6 * 60 * 60_000L
+        private const val CHANNEL = "protection"
+        private const val NOTIFICATION_ID = 1
         private const val CLIENT_IP = "10.111.222.2"
         private const val DNS_IP = "10.111.222.1"
         private val DNS_IP_BYTES = byteArrayOf(10, 111, 222.toByte(), 1)

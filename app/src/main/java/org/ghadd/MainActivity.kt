@@ -82,7 +82,11 @@ class MainActivity : ComponentActivity() {
                                 )
                             )
                         },
-                        onCheckUpdates = { Updater.checkAndInstall(this) }
+                        onCheckUpdates = { Updater.checkAndInstall(this) },
+                        onBattery = {
+                            runCatching { startActivity(KeepAlive.batteryIntent(this)) }
+                        },
+                        onBackgroundSettings = { KeepAlive.openBackgroundSettings(this) }
                     )
                 }
             }
@@ -93,7 +97,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         tick++
         // The filter was turned on before but isn't running (killed, crashed, updated): restart it.
-        if (Prefs.filterWanted && !AppState.vpnRunning && VpnService.prepare(this) == null) startVpn()
+        if (!AppState.vpnRunning) KeepAlive.startFilter(this)
         // Check for a new version at most once an hour when the app is opened.
         if (System.currentTimeMillis() - Prefs.lastUpdateCheck > 60 * 60_000L) Updater.checkAndInstall(this)
     }
@@ -105,7 +109,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startVpn() {
         Prefs.filterWanted = true
-        startService(Intent(this, BlockerVpnService::class.java))
+        KeepAlive.startFilter(this)
     }
 
     /** Un-ticking a blocked app is an unblock, so it goes through the full flow. */
@@ -127,11 +131,14 @@ private fun HomeScreen(
     onVpnSettings: () -> Unit,
     onPickApps: () -> Unit,
     onAllowUpdates: () -> Unit,
-    onCheckUpdates: () -> Unit
+    onCheckUpdates: () -> Unit,
+    onBattery: () -> Unit,
+    onBackgroundSettings: () -> Unit
 ) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     // reading `tick` makes this block re-run on resume
     val canUpdate = remember(tick) { Updater.canInstall(ctx) }
+    val battery = remember(tick) { KeepAlive.ignoringBatteryOptimizations(ctx) }
     val overlay = remember(tick) { Perms.overlayGranted(ctx) }
     val accessibility = remember(tick) { Perms.accessibilityEnabled(ctx) }
     val blockedCount = remember(tick) { Prefs.blockedApps.size }
@@ -152,6 +159,14 @@ private fun HomeScreen(
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Ghadd", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
             Text("v$version", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 6.dp))
+        }
+
+        // ---- warning: the phone force-closed Ghadd, which also switches app blocking off ----
+        if (!accessibility && blockedCount > 0) {
+            Section("⚠ App blocking was switched off", done = null) {
+                Line("Your phone force-closed Ghadd, and Android turned app blocking off. Turn it back on, then do step 5 so it doesn't happen again.")
+                Button(onClick = onAccessibility, modifier = Modifier.fillMaxWidth()) { Text("Turn app blocking back on") }
+            }
         }
 
         // ---- stats ----
@@ -200,10 +215,23 @@ private fun HomeScreen(
             Button(onClick = onPickApps, modifier = Modifier.fillMaxWidth()) { Text("Choose apps to block") }
         }
 
-        // ---- optional: always-on VPN ----
-        Section("Recommended: make the filter permanent", done = null) {
-            Line("In VPN settings, tap the gear next to Ghadd and turn on \"Always-on VPN\" and \"Block connections without VPN\". Then it restarts by itself after a reboot and nothing can bypass it.")
+        // ---- step 5: keep running in the background ----
+        Section("5. Keep Ghadd running", done = null) {
+            Line("Your phone closes background apps to save battery. Do these once so Ghadd keeps working even when you close all apps:")
+
+            Line(if (battery) "✓ Battery: unrestricted" else "a) Let Ghadd run in the background:")
+            if (!battery) Button(onClick = onBattery, modifier = Modifier.fillMaxWidth()) { Text("Allow background running") }
+
+            Line(
+                if (KeepAlive.isVivo) "b) In the screen that opens, find Ghadd and turn it ON (Autostart / Background startup / High background power usage):"
+                else "b) If your phone has an Autostart or background-apps screen, allow Ghadd there:"
+            )
+            OutlinedButton(onClick = onBackgroundSettings, modifier = Modifier.fillMaxWidth()) { Text("Open autostart settings") }
+
+            Line("c) In VPN settings, tap the gear next to Ghadd and turn on \"Always-on VPN\" so the filter starts with the phone. Leave \"Block connections without VPN\" OFF: it cuts your whole internet with Ghadd.")
             OutlinedButton(onClick = onVpnSettings, modifier = Modifier.fillMaxWidth()) { Text("Open VPN settings") }
+
+            Line("d) Open recent apps, then lock Ghadd's card (pull it down or tap the lock icon) so \"Clear all\" doesn't close it.")
         }
 
         // ---- log ----
