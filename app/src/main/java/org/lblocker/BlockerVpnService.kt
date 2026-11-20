@@ -44,8 +44,6 @@ class BlockerVpnService : VpnService() {
     }
 
     private fun start() {
-        DomainFilter.load(this)
-
         val builder = Builder()
             .setSession("L Blocker")
             .setMtu(1500)
@@ -69,7 +67,12 @@ class BlockerVpnService : VpnService() {
         running = true
         AppState.vpnRunning = true
 
-        worker = Thread({ loop(fd) }, "dns-filter").also { it.start() }
+        // Load the blocklist off the main thread (it is large). Queries sent by the phone
+        // meanwhile just wait in the tunnel until the loop starts reading.
+        worker = Thread({
+            DomainFilter.load(this)
+            loop(fd)
+        }, "dns-filter").also { it.start() }
     }
 
     private fun loop(fd: ParcelFileDescriptor) {
