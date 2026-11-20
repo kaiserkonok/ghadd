@@ -28,6 +28,11 @@ import java.util.concurrent.Executors
 /** Shared, observable app state (read by the UI). */
 object AppState {
     var vpnRunning by mutableStateOf(false)
+
+    /** DNS lookups the filter has seen since it started, and when the last one arrived. */
+    val queries = java.util.concurrent.atomic.AtomicLong(0)
+    @Volatile
+    var lastQueryAt = 0L
 }
 
 /**
@@ -176,13 +181,17 @@ class BlockerVpnService : VpnService() {
         pool.execute {
             try {
                 val name = Dns.questionName(query)
-                val reply: ByteArray? =
-                    if (name != null && DomainFilter.isBlocked(name)) {
-                        SiteBlockEvents.onBlocked(this, name)
+                AppState.queries.incrementAndGet()
+                AppState.lastQueryAt = System.currentTimeMillis()
+                val verdict = if (name != null) DomainFilter.verdict(name) else DomainFilter.Verdict.ALLOW
+                val reply: ByteArray? = when (verdict) {
+                    DomainFilter.Verdict.PORN -> {
+                        SiteBlockEvents.onBlocked(this, name!!)
                         Dns.nxdomain(query)
-                    } else {
-                        forward(query)
                     }
+                    DomainFilter.Verdict.BYPASS -> Dns.nxdomain(query) // silently
+                    DomainFilter.Verdict.ALLOW -> forward(query)
+                }
                 if (reply != null) {
                     val out = Dns.udp4(DNS_IP_BYTES, srcIp, 53, srcPort, reply)
                     synchronized(output) { output.write(out) }

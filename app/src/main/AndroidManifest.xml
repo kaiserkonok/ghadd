@@ -3,6 +3,8 @@
 
     <!-- The VPN only filters DNS on-device, but it must reach real DNS servers to resolve allowed sites. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Status card: detect a Private DNS setting that would skip the filter. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Lets us show the Quran / reminder screen on top of a browser or other app. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Restart the filter after the phone reboots. -->
@@ -21,6 +23,10 @@
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- To spot other VPN apps that would replace Ghadd's filter. -->
+        <intent>
+            <action android:name="android.net.VpnService" />
         </intent>
     </queries>
 

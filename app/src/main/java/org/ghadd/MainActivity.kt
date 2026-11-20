@@ -275,6 +275,26 @@ private fun HomeScreen(
             }
         }
 
+        // ---- status: one screenshot of this tells exactly what's wrong ----
+        val status = remember(tick) {
+            runCatching { Diagnostics.collect(ctx) }
+                .getOrElse { listOf(Diagnostics.Row(null, "Status unavailable: ${it.javaClass.simpleName}")) }
+        }
+        Section("Status", done = null) {
+            status.forEach { row ->
+                val mark = when (row.ok) { true -> "✓ "; false -> "✗ "; null -> "" }
+                Text(
+                    mark + row.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = when (row.ok) {
+                        false -> MaterialTheme.colorScheme.error
+                        true -> MaterialTheme.colorScheme.primary
+                        null -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+        }
+
         // ---- stats ----
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Stat("${remember(tick) { Prefs.streakDays() }}", "day streak", Modifier.weight(1f))
