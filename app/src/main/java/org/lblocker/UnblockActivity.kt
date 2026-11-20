@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -222,6 +223,9 @@ private fun UnblockScreen(
             Phase.Need -> {
                 var typed by remember { mutableStateOf("") }
                 val ok = Content.pledgeMatches(typed)
+                // Close the keyboard as soon as the pledge is right so it doesn't hide the buttons.
+                val focus = LocalFocusManager.current
+                LaunchedEffect(ok) { if (ok) focus.clearFocus() }
                 Body("Write this sentence exactly, and mean it:")
                 Text(
                     Content.PLEDGE,
