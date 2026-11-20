@@ -101,7 +101,13 @@ fun HomeScreen(
         StatusHero(filterOn = AppState.vpnRunning, essentialMissing = issues.count { it.essential }, other = issues.count { !it.essential })
 
         if (issues.isNotEmpty()) {
-            SectionCard(title = if (issues.size == 1) "1 thing to fix" else "${issues.size} things to fix") {
+            val essential = issues.count { it.essential }
+            val title = when (essential) {
+                0 -> "Recommended"
+                1 -> "1 thing to fix"
+                else -> "$essential things to fix"
+            }
+            SectionCard(title = title) {
                 issues.forEachIndexed { i, issue ->
                     if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     IssueRow(issue)
@@ -194,6 +200,24 @@ private data class Hero(val icon: androidx.compose.ui.graphics.vector.ImageVecto
 
 @Composable
 private fun IssueRow(issue: Issue) {
+    // Optional items: one compact line, so blocked apps and stats stay in view.
+    if (!issue.essential) {
+        Row(Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Warning, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
+            Text(
+                issue.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .padding(horizontal = 10.dp)
+                    .weight(1f)
+            )
+            Button(onClick = issue.fix, shape = RoundedCornerShape(14.dp), colors = WarningButtonColors()) {
+                Text(issue.button)
+            }
+        }
+        return
+    }
     Column(Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(

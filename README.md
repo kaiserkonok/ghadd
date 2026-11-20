@@ -14,7 +14,10 @@ Everything runs on your phone. No accounts, no server, no analytics, no cost.
   unblock flow: Quran plays, then you must choose either
   - *"I'm choosing my desire over Allah's rule"* – a long wait, logged, streak resets; or
   - *"I genuinely need it"* – type the pledge *"I'm not going to look at any haram things, Allah sees me."*,
-    wait, then pick a limited time (15/30/60 min) after which it blocks again.
+    then wait.
+
+  Either way the app opens **for that one visit**. It locks again as soon as you leave it (home screen,
+  another app, or screen off).
 - **Streak and log** – days since you last chose desire, sites blocked, recent unblocks.
 
 ## Build
@@ -26,8 +29,10 @@ python3 tools/fetch_content.py   # downloads blocklists, verses and audio into t
 ./gradlew assembleDebug          # APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Install the APK on your phone (`adb install -r app/build/outputs/apk/debug/app-debug.apk`), then follow
-the three steps on the home screen.
+Install the APK on your phone (`adb install -r app/build/outputs/apk/debug/app-debug.apk`) and open it.
+A guided setup walks through each permission one at a time, explaining what to tap. Anything skipped
+shows up on the home screen with a one-tap fix. If the accessibility switch is greyed out ("Restricted
+setting", Android 13+), the setup explains how to unlock it.
 
 ## Updates
 
