@@ -41,7 +41,7 @@ class QuranPlayer(private val ctx: Context) {
     }
 
     private fun playNext() {
-        if (released || queue.isEmpty()) return
+        if (released || paused || queue.isEmpty()) return
         val verse = queue[index % queue.size]
         index++
         current = verse
@@ -63,12 +63,39 @@ class QuranPlayer(private val ctx: Context) {
                 if (player === it) player = null
                 handler.postDelayed({ playNext() }, 1500)
             }
+            p.setOnErrorListener { mp, _, _ ->
+                mp.release()
+                if (player === mp) player = null
+                handler.postDelayed({ playNext() }, 1500)
+                true
+            }
             p.prepare()
             p.start()
             player = p
         } catch (e: Exception) {
             Log.w(TAG, "Could not play ${verse.ref}", e)
+            handler.postDelayed({ playNext() }, 1500)
         }
+    }
+
+    private var paused = false
+
+    /** The screen went to the background: stop the sound until it comes back. */
+    fun pause() {
+        if (released || paused) return
+        paused = true
+        handler.removeCallbacksAndMessages(null)
+        runCatching { player?.takeIf { it.isPlaying }?.pause() }
+        audioManager.abandonAudioFocusRequest(focus)
+    }
+
+    fun resume() {
+        if (released || !paused) return
+        paused = false
+        if (queue.isEmpty()) return
+        audioManager.requestAudioFocus(focus)
+        val p = player
+        if (p != null) runCatching { p.start() }.onFailure { playNext() } else playNext()
     }
 
     fun release() {

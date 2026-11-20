@@ -53,6 +53,17 @@ class BlockActivity : ComponentActivity() {
         super.onPause()
     }
 
+    override fun onStart() {
+        super.onStart()
+        player.resume()
+    }
+
+    override fun onStop() {
+        // Left with Home or Recents: don't keep reciting in the background with no screen.
+        player.pause()
+        super.onStop()
+    }
+
     private fun leave() {
         Perms.goHome(this)
         finish()

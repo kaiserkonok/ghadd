@@ -1,8 +1,10 @@
 package org.ghadd
 
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
@@ -82,11 +84,7 @@ class UnblockActivity : ComponentActivity() {
         }
     }
 
-    private fun appLabel(pkg: String): String = try {
-        packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
-    } catch (_: PackageManager.NameNotFoundException) {
-        pkg
-    }
+    private fun appLabel(pkg: String): String = Apps.label(this, pkg)
 
     private fun stayBlocked() {
         // Coming from a blocked app: send them home. Coming from the app list: just close.
@@ -107,6 +105,26 @@ class UnblockActivity : ComponentActivity() {
             }
         }
         finish()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // Already open (single instance). If it's for another app now, start over for that app.
+        val p = intent.getStringExtra(EXTRA_PKG) ?: return
+        if (p != pkgOrNull() || intent.getBooleanExtra(EXTRA_REMOVE, false) != removeMode) {
+            setIntent(intent)
+            recreate()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (::player.isInitialized) player.resume()
+    }
+
+    override fun onStop() {
+        if (::player.isInitialized) player.pause()
+        super.onStop()
     }
 
     override fun onResume() {
@@ -254,6 +272,12 @@ private fun UnblockScreen(
                     value = typed,
                     onValueChange = { typed = it },
                     label = { Text("Type it here") },
+                    // Autocorrect "fixes" words like "haram" and makes the pledge impossible to type.
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Text
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (ok) {
