@@ -2,6 +2,7 @@ package org.ghadd
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -39,13 +40,15 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 /**
- * The unblock flow. Opened either because a blocked app was launched (temporary unlock),
- * or because you tried to remove an app from the blocked list (permanent removal).
+ * The unblock flow. Opened either because a blocked app was launched (open it for this one
+ * visit), or because you tried to remove an app from the blocked list (permanent removal).
  *
  *  1. Quran plays and a reminder is shown, with a short wait.
  *  2. Choose: "I'm choosing my desire over Allah's rule"  or  "I genuinely need it".
  *  3a. Desire: a long wait, then access. Logged honestly and resets your streak.
- *  3b. Need: type the pledge, a short wait, choose how long.
+ *  3b. Need: type the pledge, a short wait, then access.
+ *
+ * Access lasts for one visit: the app locks again as soon as you leave it (see [Unlock]).
  */
 class UnblockActivity : ComponentActivity() {
     private lateinit var player: QuranPlayer
@@ -92,17 +95,23 @@ class UnblockActivity : ComponentActivity() {
         finish()
     }
 
-    private fun grant(kind: String, minutes: Int) {
+    private fun grant(kind: String) {
         if (removeMode) {
             Prefs.blockedApps = Prefs.blockedApps - pkg
             Prefs.addLog(kind, label, 0)
-        } else {
-            Prefs.unlock(pkg, minutes)
-            Prefs.addLog(kind, label, minutes)
-            // We sent them to the home screen when the app was blocked; open it again now.
-            packageManager.getLaunchIntentForPackage(pkg)?.let {
-                runCatching { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            }
+            finish()
+            return
+        }
+        Prefs.addLog(kind, label, Prefs.OPENED_ONCE)
+        // Unlocked for this visit only. Set before the app opens so it isn't blocked again.
+        Unlock.pkg = pkg
+        // Bring the app to the front (it may be behind us, or we may have sent them home).
+        val launch = packageManager.getLaunchIntentForPackage(pkg)
+            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+        val opened = launch != null && runCatching { startActivity(launch) }.isSuccess
+        if (!opened) {
+            // App can't be opened from here (uninstalled, no icon): still unlocked, just close.
+            Log.w("UnblockActivity", "could not open $pkg")
         }
         finish()
     }
@@ -161,7 +170,6 @@ private enum class Phase { Reminder, Choose, Desire, Need }
 private const val REMINDER_SECONDS = 15
 private const val DESIRE_SECONDS = 90
 private const val NEED_SECONDS = 20
-private const val DESIRE_MINUTES = 15
 
 @Composable
 private fun rememberCountdown(key: Any, seconds: Int): Int {
@@ -182,7 +190,7 @@ private fun UnblockScreen(
     removeMode: Boolean,
     player: QuranPlayer,
     onStay: () -> Unit,
-    onGrant: (kind: String, minutes: Int) -> Unit
+    onGrant: (kind: String) -> Unit
 ) {
     var phase by remember { mutableStateOf(Phase.Reminder) }
     val reminder = remember { Content.reminders.random() }
@@ -236,7 +244,7 @@ private fun UnblockScreen(
                         "This will be logged and your streak resets. Use this time to change your mind."
                 )
                 Button(
-                    onClick = { onGrant(Prefs.KIND_DESIRE, DESIRE_MINUTES) },
+                    onClick = { onGrant(Prefs.KIND_DESIRE) },
                     enabled = left == 0,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -248,7 +256,7 @@ private fun UnblockScreen(
                         when {
                             left > 0 -> "Wait $left s…"
                             removeMode -> "Remove it anyway"
-                            else -> "Unblock for $DESIRE_MINUTES min anyway"
+                            else -> "Open $app anyway"
                         }
                     )
                 }
@@ -286,19 +294,15 @@ private fun UnblockScreen(
                         Body("Wait $left s…")
                     } else if (removeMode) {
                         Button(
-                            onClick = { onGrant(Prefs.KIND_NEED, 0) },
+                            onClick = { onGrant(Prefs.KIND_NEED) },
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Remove it from the blocked list") }
                     } else {
-                        Body("For how long?")
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(15, 30, 60).forEach { m ->
-                                Button(
-                                    onClick = { onGrant(Prefs.KIND_NEED, m) },
-                                    modifier = Modifier.weight(1f)
-                                ) { Text("$m min") }
-                            }
-                        }
+                        Body("$app will open now. It locks again as soon as you leave it.")
+                        Button(
+                            onClick = { onGrant(Prefs.KIND_NEED) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Open $app") }
                     }
                 }
             }

@@ -1,35 +1,48 @@
 package org.ghadd
 
 import android.accessibilityservice.AccessibilityService
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.IntentFilter
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 import android.view.inputmethod.InputMethodManager
 
 /**
- * Watches which app comes to the foreground. If it is one you blocked (and it is not
- * temporarily unlocked), the unblock screen is shown on top of it.
+ * An app the user unlocked through the unblock flow. It stays open for this one visit only:
+ * as soon as they leave it (home screen, another app, screen off) it is locked again.
+ * Kept in memory on purpose - if anything restarts Ghadd, the app is simply locked.
+ */
+object Unlock {
+    @Volatile
+    var pkg: String? = null
+}
+
+/**
+ * Watches which app comes to the foreground. If it is one you blocked (and you didn't just
+ * unlock it for this visit), the unblock screen is shown on top of it.
  * It never reads screen content - only the package name of the window that opened.
  */
 class AppBlockService : AccessibilityService() {
-    private val handler = Handler(Looper.getMainLooper())
 
-    /** The app the user is actually in (keyboards and the notification shade don't count). */
-    private var current: String? = null
     private var lastFilterCheck = 0L
 
     private var overlays: Set<String> = emptySet()
     private var overlaysAt = 0L
+    private val launchable = HashMap<String, Boolean>()
 
-    /** Re-blocks an app when its temporary unlock runs out while it's still open. */
-    private val expiry = Runnable { current?.let { check(it) } }
+    /** Turning the screen off ends an unlocked visit. */
+    private val screenOff = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            Unlock.pkg = null
+        }
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         // Android (re)connected us, e.g. after the phone killed Ghadd: bring the filter back too.
         KeepAlive.startFilter(this)
+        runCatching { registerReceiver(screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF)) }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -43,27 +56,37 @@ class AppBlockService : AccessibilityService() {
             if (!AppState.vpnRunning) KeepAlive.startFilter(this)
         }
 
-        // Keyboards, the notification shade and our own screens open on top of the app the
-        // user is in. They must not count as "left the app", or opening the keyboard would
-        // cancel the end of a temporary unlock.
-        if (pkg == packageName || pkg in overlayPackages()) return
+        if (pkg == packageName) {
+            // Our block screens open on top of the app; Ghadd's own home screen means they left.
+            val cls = event.className?.toString().orEmpty()
+            if (cls == MainActivity::class.java.name) Unlock.pkg = null
+            return
+        }
+        // Keyboards and the notification shade open on top of the app the user is in.
+        if (pkg in overlayPackages()) return
 
-        current = pkg
-        handler.removeCallbacks(expiry)
+        endVisitIfLeft(pkg)
         check(pkg)
+    }
+
+    /**
+     * The unlocked app's visit ends when the user goes to the home screen or another app.
+     * Share sheets, permission dialogs, sign-in pop-ups etc. come from apps without a home-screen
+     * icon; they open from inside the app and don't count as leaving it.
+     */
+    private fun endVisitIfLeft(pkg: String) {
+        val unlocked = Unlock.pkg ?: return
+        if (pkg == unlocked) return
+        val left = pkg in Apps.homePackages(this) ||
+            launchable.getOrPut(pkg) { packageManager.getLaunchIntentForPackage(pkg) != null }
+        if (left) Unlock.pkg = null
     }
 
     private fun check(pkg: String) {
         if (pkg !in Prefs.blockedApps) return
         // Never block the home screen: "go home" would land in a blocked app again, forever.
         if (pkg in Apps.homePackages(this)) return
-
-        if (Prefs.isUnlocked(pkg)) {
-            val wait = Prefs.unlockUntil(pkg) - System.currentTimeMillis() + 500
-            handler.removeCallbacks(expiry)
-            handler.postDelayed(expiry, wait)
-            return
-        }
+        if (pkg == Unlock.pkg) return
         // Already on screen for this app. If the user only switched away from it (Recents),
         // fall through and bring it back to the front.
         if (UnblockActivity.showingFor == pkg && ScreenState.visible == "unblock") return
@@ -98,7 +121,7 @@ class AppBlockService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onDestroy() {
-        handler.removeCallbacksAndMessages(null)
+        runCatching { unregisterReceiver(screenOff) }
         super.onDestroy()
     }
 }

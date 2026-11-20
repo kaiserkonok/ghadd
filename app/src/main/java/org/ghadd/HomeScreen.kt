@@ -130,7 +130,11 @@ fun HomeScreen(
             SectionCard(title = "Recent unblocks") {
                 val fmt = remember { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT) }
                 log.forEach {
-                    val what = if (it.minutes == 0) "removed from list" else "${it.minutes} min"
+                    val what = when (it.minutes) {
+                        0 -> "removed from list"
+                        Prefs.OPENED_ONCE -> "opened once"
+                        else -> "${it.minutes} min"
+                    }
                     val why = if (it.kind == Prefs.KIND_DESIRE) "desire" else "need"
                     Column {
                         Text(

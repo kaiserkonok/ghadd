@@ -75,21 +75,16 @@ object Prefs {
             sp.edit().putStringSet("blocked", HashSet(value)).apply()
         }
 
-    // ---- temporary unlocks --------------------------------------------------------------
-
-    fun unlockUntil(pkg: String): Long = sp.getLong("unlock_$pkg", 0L)
-
-    fun isUnlocked(pkg: String): Boolean = System.currentTimeMillis() < unlockUntil(pkg)
-
-    fun unlock(pkg: String, minutes: Int) {
-        sp.edit().putLong("unlock_$pkg", System.currentTimeMillis() + minutes * 60_000L).apply()
-    }
-
     // ---- unblock log --------------------------------------------------------------------
 
+    /**
+     * [minutes]: 0 = removed from the blocked list for good, [OPENED_ONCE] = opened for one
+     * visit, anything else = an old timed unlock (from before v0.6).
+     */
     data class Entry(val time: Long, val kind: String, val app: String, val minutes: Int)
 
-    /** [minutes] == 0 means the app was removed from the blocked list for good. */
+    const val OPENED_ONCE = -1
+
     @Synchronized
     fun addLog(kind: String, app: String, minutes: Int) {
         val now = System.currentTimeMillis()
