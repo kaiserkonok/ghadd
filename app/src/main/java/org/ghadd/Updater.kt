@@ -10,7 +10,6 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -25,7 +24,11 @@ import kotlin.concurrent.thread
  */
 object Updater {
     private const val TAG = "Updater"
-    private const val LATEST_URL = "https://api.github.com/repos/kaiserkonok/ghadd/releases/latest"
+    private const val RELEASES = "https://github.com/kaiserkonok/ghadd/releases"
+    private const val LATEST_URL = "$RELEASES/latest"
+
+    /** Every release must attach the APK under exactly this name (tools/release.sh does). */
+    private const val APK_NAME = "ghadd.apk"
 
     /** Human-readable status for the home screen. */
     var status by mutableStateOf("")
@@ -72,24 +75,24 @@ object Updater {
         }
     }
 
+    /**
+     * Uses GitHub's plain web redirect instead of the REST API: the API allows only 60
+     * requests/hour per IP, which shared mobile/ISP addresses exceed easily.
+     * /releases/latest  ->  302 Location: .../releases/tag/v1.2.3
+     */
     private fun latest(): Release? {
         val conn = URL(LATEST_URL).openConnection() as HttpURLConnection
-        conn.setRequestProperty("Accept", "application/vnd.github+json")
+        conn.instanceFollowRedirects = false
         conn.setRequestProperty("User-Agent", "ghadd-updater")
         conn.connectTimeout = 15_000
         conn.readTimeout = 15_000
         try {
-            if (conn.responseCode == 404) return null // no release published yet
-            val json = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
-            val tag = json.getString("tag_name").removePrefix("v")
-            val assets = json.getJSONArray("assets")
-            for (i in 0 until assets.length()) {
-                val a = assets.getJSONObject(i)
-                if (a.getString("name").endsWith(".apk")) {
-                    return Release(tag, a.getString("browser_download_url"))
-                }
-            }
-            return null
+            val code = conn.responseCode
+            if (code !in 300..399) return null // no release published yet
+            val location = conn.getHeaderField("Location") ?: return null
+            val tag = location.substringAfterLast("/tag/", "")
+            if (tag.isEmpty()) return null
+            return Release(tag.removePrefix("v"), "$RELEASES/download/$tag/$APK_NAME")
         } finally {
             conn.disconnect()
         }

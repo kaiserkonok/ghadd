@@ -21,8 +21,9 @@ fi
 export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-amd64}"
 ./gradlew assembleDebug -q
 
+# The app downloads releases/download/<tag>/ghadd.apk, so the asset name must stay fixed.
 mkdir -p dist
-apk="dist/ghadd-$ver.apk"
+apk="dist/ghadd.apk"
 cp app/build/outputs/apk/debug/app-debug.apk "$apk"
 
 gh release create "$tag" "$apk" --title "Ghadd $ver" --notes "$notes"
