@@ -29,6 +29,16 @@ python3 tools/fetch_content.py   # downloads blocklists, verses and audio into t
 Install the APK on your phone (`adb install -r app/build/outputs/apk/debug/app-debug.apk`), then follow
 the three steps on the home screen.
 
+## Updates
+
+Ghadd updates itself from this repo's [GitHub Releases](https://github.com/kaiserkonok/ghadd/releases)
+(checked when the app opens and every 6 hours). Install the latest `ghadd.apk` by hand once and
+allow Ghadd to install apps; after that new versions install themselves (silently on Android 12+,
+one "Install" tap on older Android).
+
+To publish a version: bump `versionCode` and `versionName` in `app/build.gradle.kts`, commit, then
+run `tools/release.sh "what changed"`. Every release must be signed with the same key.
+
 ## How the filter works
 
 The app creates a VPN that only claims a fake DNS server address. Phone DNS lookups come to the app,
