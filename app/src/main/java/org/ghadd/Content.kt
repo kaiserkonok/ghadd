@@ -8,7 +8,7 @@ import org.json.JSONArray
 data class Verse(val ref: String, val arabic: String, val translation: String, val raw: String)
 
 object Content {
-    const val PLEDGE = "I'm not going to look at any haram things, Allah sees me."
+    const val PLEDGE = "I am not going to look at any haram things, Allah sees me."
 
     val reminders = listOf(
         "Small, repeated mistakes compound. Every day you repeat this, it costs you more in the long run.",
@@ -42,8 +42,12 @@ object Content {
         return list
     }
 
-    /** Compare pledges ignoring case, spaces and punctuation. */
-    fun pledgeMatches(typed: String): Boolean = norm(typed) == norm(PLEDGE)
+    /** Compare pledges ignoring case, spaces and punctuation. "I'm" is accepted for "I am". */
+    fun pledgeMatches(typed: String): Boolean {
+        val t = norm(typed)
+        val p = norm(PLEDGE)
+        return t == p || t == p.replaceFirst("iam", "im")
+    }
 
     private fun norm(s: String) = s.lowercase().filter { it.isLetterOrDigit() }
 }

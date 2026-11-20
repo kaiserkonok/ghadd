@@ -1,59 +1,105 @@
-# Ghadd
+<div align="center">
 
-*Ghadd* (غضّ) means to lower or restrain, most famously in *ghadd al-basar*, lowering the gaze (Qur'an 24:30).
+# غضّ Ghadd
 
-An open-source Android app to help you guard yourself from lust and build self-control.
-Everything runs on your phone. No accounts, no server, no analytics, no cost.
+**Guard your gaze. Build self-control.**
 
-## What it does
+A free Android app that blocks porn on your whole phone and helps you stay away from the apps that pull you in, with Quran recitation as a reminder.
 
-- **Porn filter** – a local, on-device DNS filter (Android `VpnService`). It blocks porn sites in every
-  browser and app, including incognito. When a blocked site is hit, Quran recitation plays with a
-  reminder. There is no unblock option and no off switch in the app.
-- **App blocking** – pick apps to block. Opening one (or trying to remove it from the list) starts the
-  unblock flow: Quran plays, then you must choose either
-  - *"I'm choosing my desire over Allah's rule"* – a long wait, logged, streak resets; or
-  - *"I genuinely need it"* – type the pledge *"I'm not going to look at any haram things, Allah sees me."*,
-    then wait.
+[![Latest release](https://img.shields.io/github/v/release/kaiserkonok/ghadd?style=for-the-badge&color=2e7d5b)](https://github.com/kaiserkonok/ghadd/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/kaiserkonok/ghadd/total?style=for-the-badge&color=2e7d5b)](https://github.com/kaiserkonok/ghadd/releases)
+![Android 8+](https://img.shields.io/badge/Android-8.0%2B-2e7d5b?style=for-the-badge&logo=android&logoColor=white)
 
-  Either way the app opens **for that one visit**. It locks again as soon as you leave it (home screen,
-  another app, or screen off).
-- **Streak and log** – days since you last chose desire, sites blocked, recent unblocks.
+### [⬇ Download Ghadd for Android](https://github.com/kaiserkonok/ghadd/releases/latest/download/ghadd.apk)
 
-## Build
+No account · No ads · No tracking · Free forever
 
-Needs JDK 17 and the Android SDK (platform 34).
+</div>
+
+---
+
+*Ghadd* (غضّ) means "to lower" or "to restrain", as in *ghadd al-basar*, lowering the gaze (Qur'an 24:30).
+
+## Features
+
+🛡️ **Porn filter for the whole phone**
+Blocks over a million adult websites in every browser and app, including incognito mode. There is no off switch, so a weak moment can't undo it.
+
+📖 **Quran instead of temptation**
+When a blocked site is opened, Ghadd shows a verse with its translation and plays the recitation.
+
+📵 **Block any app**
+Choose the apps that lead you astray. Opening one plays Quran and asks you to pause and think. You have to be honest about why you want in:
+- **"I'm choosing my desire over Allah's rule"**: a long wait, and your streak resets.
+- **"I genuinely need it"**: type a short pledge, then wait.
+
+Either way, the app opens for that one visit and locks again as soon as you leave it.
+
+🔥 **Streak and history**
+See how many days you've stayed clean, how many sites were blocked, and every time an app was unblocked.
+
+🔒 **Private by design**
+Everything happens on your phone. Ghadd has no servers and no accounts, and it never sends your browsing anywhere.
+
+🔄 **Updates itself**
+New versions and new blocked sites install automatically.
+
+## Install
+
+1. **[Download `ghadd.apk`](https://github.com/kaiserkonok/ghadd/releases/latest/download/ghadd.apk)** on your Android phone.
+2. Open the downloaded file. If your phone asks, allow your browser to install apps.
+3. Open **Ghadd** and follow the setup. It takes about two minutes and tells you exactly what to tap on each screen.
+
+That's it. Ghadd keeps itself up to date from now on.
+
+> **Accessibility switch greyed out?** Android 13 and newer restrict this for apps installed from a file. Ghadd's setup shows you how to allow it in a few taps.
+
+## How it works
+
+Ghadd uses Android's VPN feature to run a **local DNS filter**. When any app looks up a website, the lookup goes to Ghadd on your phone. Ghadd refuses adult domains and passes everything else to a normal DNS server. Your traffic itself never goes through Ghadd or anyone else.
+
+Known ways to get around the filter, such as encrypted DNS services, are blocked too.
+
+App blocking uses Android's accessibility service. Ghadd only sees **which app** is opened, never what's on the screen.
+
+## Build from source
+
+Requires JDK 17 and the Android SDK (platform 34).
 
 ```sh
-python3 tools/fetch_content.py   # downloads blocklists, verses and audio into the app
-./gradlew assembleDebug          # APK: app/build/outputs/apk/debug/app-debug.apk
+git clone https://github.com/kaiserkonok/ghadd.git
+cd ghadd
+python3 tools/fetch_content.py   # downloads blocklists, verses and recitation audio
+./gradlew assembleDebug          # → app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Install the APK on your phone (`adb install -r app/build/outputs/apk/debug/app-debug.apk`) and open it.
-A guided setup walks through each permission one at a time, explaining what to tap. Anything skipped
-shows up on the home screen with a one-tap fix. If the accessibility switch is greyed out ("Restricted
-setting", Android 13+), the setup explains how to unlock it.
+### Releasing
 
-## Updates
+Bump `versionCode` and `versionName` in `app/build.gradle.kts`, commit, then run:
 
-Ghadd updates itself from this repo's [GitHub Releases](https://github.com/kaiserkonok/ghadd/releases)
-(checked when the app opens and every 6 hours). Install the latest `ghadd.apk` by hand once and
-allow Ghadd to install apps; after that new versions install themselves (silently on Android 12+,
-one "Install" tap on older Android).
+```sh
+tools/release.sh "What changed"
+```
 
-To publish a version: bump `versionCode` and `versionName` in `app/build.gradle.kts`, commit, then
-run `tools/release.sh "what changed"`. Every release must be signed with the same key.
+Installed copies update themselves from the latest GitHub Release. Every release must be signed with the same key.
 
-## How the filter works
+## Contributing
 
-The app creates a VPN that only claims a fake DNS server address. Phone DNS lookups come to the app,
-which answers "does not exist" for porn domains and forwards everything else to a real DNS server.
-No traffic is routed through anyone. Well-known public DNS / DoH addresses are routed into the tunnel
-and dropped so apps can't bypass the filter. For best results enable *Always-on VPN* and
-*Block connections without VPN* for Ghadd in Android's VPN settings.
+Issues and pull requests are welcome, especially:
+- **Blocked sites:** missing sites, or sites blocked by mistake
+- **Phone support:** devices where Ghadd gets closed in the background
+- **Translations** of the app and reminders
 
-## Notes
+The verse selection lives in `tools/fetch_content.py`. Changes there should be reviewed by someone with knowledge of the Qur'an.
 
-- Verse selection lives in `tools/fetch_content.py`; please have it reviewed by someone knowledgeable.
-- Audio: Mishary Alafasy via everyayah.com. Translation: Sahih International via api.alquran.cloud.
-- Blocklists: StevenBlack/hosts and Sinfonietta/hostfiles.
+## Credits
+
+- Recitation: Mishary Rashid Alafasy, via [everyayah.com](https://everyayah.com)
+- Translation: Sahih International, via [alquran.cloud](https://alquran.cloud)
+- Blocklists: [StevenBlack/hosts](https://github.com/StevenBlack/hosts) and [Sinfonietta/hostfiles](https://github.com/Sinfonietta/hostfiles)
+
+<div align="center">
+
+*"Tell the believing men to lower their gaze and guard their chastity. That is purer for them."* (Qur'an 24:30)
+
+</div>
