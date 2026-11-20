@@ -76,7 +76,7 @@ class BlockerVpnService : VpnService() {
         val n = Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_notif)
             .setContentTitle("Ghadd is protecting you")
-            .setContentText("Porn filter and app blocking are on.")
+            .setContentText("The porn filter is on. Tap to open Ghadd.")
             .setOngoing(true)
             .setContentIntent(open)
             .build()
@@ -124,6 +124,7 @@ class BlockerVpnService : VpnService() {
         }, "dns-filter").also { it.start() }
 
         // This service is always running, so it also drives the background update check.
+        handler.removeCallbacks(updateCheck)
         handler.postDelayed(updateCheck, 60_000)
     }
 
@@ -148,12 +149,27 @@ class BlockerVpnService : VpnService() {
                 if (n <= 0) continue
                 handlePacket(buf.copyOf(n), output)
             }
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             if (running) Log.w(TAG, "tunnel read ended", e)
         } finally {
+            // If the loop died on its own, the VPN would stay up with nobody answering DNS,
+            // which cuts the phone's whole internet. Tear the tunnel down and build a new one.
+            val unexpected = running
             running = false
             AppState.vpnRunning = false
+            if (unexpected) handler.post {
+                closeTunnel()
+                if (Prefs.filterWanted) start() else stopSelf()
+            }
         }
+    }
+
+    private fun closeTunnel() {
+        try {
+            tun?.close()
+        } catch (_: IOException) {
+        }
+        tun = null
     }
 
     private fun handlePacket(pkt: ByteArray, output: FileOutputStream) {
@@ -240,11 +256,7 @@ class BlockerVpnService : VpnService() {
         handler.removeCallbacksAndMessages(null)
         running = false
         AppState.vpnRunning = false
-        try {
-            tun?.close()
-        } catch (_: IOException) {
-        }
-        tun = null
+        closeTunnel()
         pool.shutdownNow()
     }
 
