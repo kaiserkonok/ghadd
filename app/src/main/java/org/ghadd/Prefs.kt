@@ -28,6 +28,12 @@ object Prefs {
             sp.edit().putBoolean("filter_wanted", value).apply()
         }
 
+    var lastUpdateCheck: Long
+        get() = sp.getLong("last_update_check", 0L)
+        set(value) {
+            sp.edit().putLong("last_update_check", value).apply()
+        }
+
     // ---- blocked apps -------------------------------------------------------------------
 
     var blockedApps: Set<String>

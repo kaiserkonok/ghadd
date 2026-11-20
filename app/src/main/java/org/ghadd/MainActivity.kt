@@ -73,7 +73,16 @@ class MainActivity : ComponentActivity() {
                             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                         },
                         onVpnSettings = { startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) },
-                        onPickApps = { showApps = true }
+                        onPickApps = { showApps = true },
+                        onAllowUpdates = {
+                            startActivity(
+                                Intent(
+                                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                    android.net.Uri.parse("package:$packageName")
+                                )
+                            )
+                        },
+                        onCheckUpdates = { Updater.checkAndInstall(this) }
                     )
                 }
             }
@@ -85,6 +94,8 @@ class MainActivity : ComponentActivity() {
         tick++
         // The filter was turned on before but isn't running (killed, crashed, updated): restart it.
         if (Prefs.filterWanted && !AppState.vpnRunning && VpnService.prepare(this) == null) startVpn()
+        // Check for a new version at most once an hour when the app is opened.
+        if (System.currentTimeMillis() - Prefs.lastUpdateCheck > 60 * 60_000L) Updater.checkAndInstall(this)
     }
 
     private fun enableFilter() {
@@ -114,10 +125,13 @@ private fun HomeScreen(
     onOverlay: () -> Unit,
     onAccessibility: () -> Unit,
     onVpnSettings: () -> Unit,
-    onPickApps: () -> Unit
+    onPickApps: () -> Unit,
+    onAllowUpdates: () -> Unit,
+    onCheckUpdates: () -> Unit
 ) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     // reading `tick` makes this block re-run on resume
+    val canUpdate = remember(tick) { Updater.canInstall(ctx) }
     val overlay = remember(tick) { Perms.overlayGranted(ctx) }
     val accessibility = remember(tick) { Perms.accessibilityEnabled(ctx) }
     val blockedCount = remember(tick) { Prefs.blockedApps.size }
@@ -167,6 +181,17 @@ private fun HomeScreen(
         Section("3. App blocking", done = accessibility) {
             Line("Turn on \"Ghadd\" in Accessibility so we can tell when an app you blocked is opened. It only sees the app's name, never its content.")
             if (!accessibility) Button(onClick = onAccessibility, modifier = Modifier.fillMaxWidth()) { Text("Open Accessibility settings") }
+        }
+
+        // ---- step 4: updates ----
+        Section("4. Automatic updates", done = canUpdate) {
+            Line(
+                if (canUpdate) "On. Ghadd updates itself from GitHub."
+                else "Allow Ghadd to install apps so it can update itself. You only do this once."
+            )
+            if (!canUpdate) Button(onClick = onAllowUpdates, modifier = Modifier.fillMaxWidth()) { Text("Allow updates") }
+            if (Updater.status.isNotEmpty()) Line(Updater.status)
+            OutlinedButton(onClick = onCheckUpdates, modifier = Modifier.fillMaxWidth()) { Text("Check for updates now") }
         }
 
         // ---- apps ----

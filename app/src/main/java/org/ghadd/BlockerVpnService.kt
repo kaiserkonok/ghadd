@@ -2,6 +2,8 @@ package org.ghadd
 
 import android.content.Intent
 import android.net.VpnService
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.compose.runtime.getValue
@@ -73,6 +75,20 @@ class BlockerVpnService : VpnService() {
             DomainFilter.load(this)
             loop(fd)
         }, "dns-filter").also { it.start() }
+
+        // This service is always running, so it also drives the background update check.
+        handler.postDelayed(updateCheck, 60_000)
+    }
+
+    private val handler = Handler(Looper.getMainLooper())
+
+    private val updateCheck = object : Runnable {
+        override fun run() {
+            if (System.currentTimeMillis() - Prefs.lastUpdateCheck > UPDATE_INTERVAL_MS) {
+                Updater.checkAndInstall(this@BlockerVpnService)
+            }
+            handler.postDelayed(this, 60 * 60_000L) // look again in an hour
+        }
     }
 
     private fun loop(fd: ParcelFileDescriptor) {
@@ -167,6 +183,7 @@ class BlockerVpnService : VpnService() {
     }
 
     private fun shutdown() {
+        handler.removeCallbacksAndMessages(null)
         running = false
         AppState.vpnRunning = false
         try {
@@ -179,6 +196,7 @@ class BlockerVpnService : VpnService() {
 
     companion object {
         private const val TAG = "BlockerVpn"
+        private const val UPDATE_INTERVAL_MS = 6 * 60 * 60_000L
         private const val CLIENT_IP = "10.111.222.2"
         private const val DNS_IP = "10.111.222.1"
         private val DNS_IP_BYTES = byteArrayOf(10, 111, 222.toByte(), 1)
