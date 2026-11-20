@@ -1,4 +1,4 @@
-package org.lblocker
+package org.ghadd
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent

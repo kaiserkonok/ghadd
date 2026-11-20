@@ -1,4 +1,4 @@
-package org.lblocker
+package org.ghadd
 
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -69,7 +69,7 @@ class UnblockActivity : ComponentActivity() {
         })
 
         setContent {
-            LBlockerTheme {
+            GhaddTheme {
                 UnblockScreen(
                     app = label,
                     removeMode = removeMode,

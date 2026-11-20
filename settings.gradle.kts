@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "l-blocker"
+rootProject.name = "ghadd"
 include(":app")

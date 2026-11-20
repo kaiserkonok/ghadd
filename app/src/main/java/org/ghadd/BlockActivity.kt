@@ -1,4 +1,4 @@
-package org.lblocker
+package org.ghadd
 
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
@@ -36,7 +36,7 @@ class BlockActivity : ComponentActivity() {
         })
 
         setContent {
-            LBlockerTheme {
+            GhaddTheme {
                 BlockScreen(player, onLeave = ::leave)
             }
         }

@@ -1,4 +1,4 @@
-package org.lblocker
+package org.ghadd
 
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -60,7 +60,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            LBlockerTheme {
+            GhaddTheme {
                 var showApps by remember { mutableStateOf(false) }
                 if (showApps) {
                     AppsScreen(tick, onBack = { showApps = false }, onTryRemove = ::askRemove)
@@ -132,7 +132,7 @@ private fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Spacer(Modifier.height(16.dp))
-        Text("L Blocker", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+        Text("Ghadd", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
 
         // ---- stats ----
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -159,7 +159,7 @@ private fun HomeScreen(
 
         // ---- step 3: accessibility ----
         Section("3. App blocking", done = accessibility) {
-            Line("Turn on \"L Blocker\" in Accessibility so we can tell when an app you blocked is opened. It only sees the app's name, never its content.")
+            Line("Turn on \"Ghadd\" in Accessibility so we can tell when an app you blocked is opened. It only sees the app's name, never its content.")
             if (!accessibility) Button(onClick = onAccessibility, modifier = Modifier.fillMaxWidth()) { Text("Open Accessibility settings") }
         }
 
@@ -171,7 +171,7 @@ private fun HomeScreen(
 
         // ---- optional: always-on VPN ----
         Section("Recommended: make the filter permanent", done = null) {
-            Line("In VPN settings, tap the gear next to L Blocker and turn on \"Always-on VPN\" and \"Block connections without VPN\". Then it restarts by itself after a reboot and nothing can bypass it.")
+            Line("In VPN settings, tap the gear next to Ghadd and turn on \"Always-on VPN\" and \"Block connections without VPN\". Then it restarts by itself after a reboot and nothing can bypass it.")
             OutlinedButton(onClick = onVpnSettings, modifier = Modifier.fillMaxWidth()) { Text("Open VPN settings") }
         }
 

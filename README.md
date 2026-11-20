@@ -1,4 +1,6 @@
-# L Blocker
+# Ghadd
+
+*Ghadd* (غضّ) means to lower or restrain, most famously in *ghadd al-basar*, lowering the gaze (Qur'an 24:30).
 
 An open-source Android app to help you guard yourself from lust and build self-control.
 Everything runs on your phone. No accounts, no server, no analytics, no cost.
@@ -33,7 +35,7 @@ The app creates a VPN that only claims a fake DNS server address. Phone DNS look
 which answers "does not exist" for porn domains and forwards everything else to a real DNS server.
 No traffic is routed through anyone. Well-known public DNS / DoH addresses are routed into the tunnel
 and dropped so apps can't bypass the filter. For best results enable *Always-on VPN* and
-*Block connections without VPN* for L Blocker in Android's VPN settings.
+*Block connections without VPN* for Ghadd in Android's VPN settings.
 
 ## Notes
 

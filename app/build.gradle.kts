@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "org.lblocker"
+    namespace = "org.ghadd"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "org.lblocker"
+        applicationId = "org.ghadd"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

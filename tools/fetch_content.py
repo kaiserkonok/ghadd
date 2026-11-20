@@ -30,7 +30,7 @@ VERSES = [
 
 
 def get(url: str) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "l-blocker-fetch"})
+    req = urllib.request.Request(url, headers={"User-Agent": "ghadd-fetch"})
     with urllib.request.urlopen(req, timeout=60) as r:
         return r.read()
 

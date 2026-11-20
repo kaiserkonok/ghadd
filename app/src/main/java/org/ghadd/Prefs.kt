@@ -1,4 +1,4 @@
-package org.lblocker
+package org.ghadd
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -15,7 +15,7 @@ object Prefs {
 
     fun init(ctx: Context) {
         if (::sp.isInitialized) return
-        sp = ctx.applicationContext.getSharedPreferences("lblocker", Context.MODE_PRIVATE)
+        sp = ctx.applicationContext.getSharedPreferences("ghadd", Context.MODE_PRIVATE)
         if (!sp.contains("first_run")) {
             sp.edit().putLong("first_run", System.currentTimeMillis()).apply()
         }

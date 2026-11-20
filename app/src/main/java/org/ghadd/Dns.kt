@@ -1,4 +1,4 @@
-package org.lblocker
+package org.ghadd
 
 /** Minimal DNS + IPv4/UDP packet helpers - just enough for a local DNS filter. */
 object Dns {

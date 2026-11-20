@@ -1,4 +1,4 @@
-package org.lblocker
+package org.ghadd
 
 import android.content.Intent
 import android.net.VpnService
@@ -45,7 +45,7 @@ class BlockerVpnService : VpnService() {
 
     private fun start() {
         val builder = Builder()
-            .setSession("L Blocker")
+            .setSession("Ghadd")
             .setMtu(1500)
             .setBlocking(true)
             .addAddress(CLIENT_IP, 32)
