@@ -42,6 +42,17 @@ class BlockActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        ScreenState.visible = "block"
+        Launcher.clearAlert(this)
+    }
+
+    override fun onPause() {
+        if (ScreenState.visible == "block") ScreenState.visible = null
+        super.onPause()
+    }
+
     private fun leave() {
         Perms.goHome(this)
         finish()

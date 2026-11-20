@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Fallback when the phone blocks background screens: an alarm-style full-screen alert. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <queries>
         <intent>
@@ -67,6 +70,10 @@
 
         <receiver
             android:name=".InstallResultReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".WatchdogReceiver"
             android:exported="false" />
 
         <service

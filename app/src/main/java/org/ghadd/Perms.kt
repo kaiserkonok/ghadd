@@ -43,9 +43,13 @@ object SiteBlockEvents {
         val now = SystemClock.elapsedRealtime()
         if (now - last < 4000) return
         last = now
-        if (!Perms.overlayGranted(ctx)) return
-        ctx.startActivity(
-            Intent(ctx, BlockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (ScreenState.visible == "block") return
+        Launcher.show(
+            ctx,
+            Intent(ctx, BlockActivity::class.java),
+            key = "block",
+            title = "Stop. Allah sees you.",
+            text = "That site is blocked. Tap to listen."
         )
     }
 }

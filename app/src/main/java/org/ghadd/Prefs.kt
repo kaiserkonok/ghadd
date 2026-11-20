@@ -28,6 +28,12 @@ object Prefs {
             sp.edit().putBoolean("filter_wanted", value).apply()
         }
 
+    /** Setup steps that Android can't verify (phone-maker screens): done once the user visited them. */
+    fun setupDone(step: String): Boolean = sp.getBoolean("setup_$step", false)
+    fun markSetupDone(step: String) {
+        sp.edit().putBoolean("setup_$step", true).apply()
+    }
+
     var lastUpdateCheck: Long
         get() = sp.getLong("last_update_check", 0L)
         set(value) {

@@ -50,10 +50,19 @@ class AppBlockService : AccessibilityService() {
         }
         if (UnblockActivity.showingFor == pkg) return
 
-        startActivity(
-            Intent(this, UnblockActivity::class.java)
-                .putExtra(UnblockActivity.EXTRA_PKG, pkg)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // Show the unblock screen over the app. If the phone refuses to open it (Vivo and
+        // others block background screens), get the user out of the blocked app anyway -
+        // accessibility can always press Home - and show a full-screen alert instead.
+        val label = runCatching {
+            packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+        }.getOrDefault("This app")
+        Launcher.show(
+            this,
+            Intent(this, UnblockActivity::class.java).putExtra(UnblockActivity.EXTRA_PKG, pkg),
+            key = "unblock",
+            title = "$label is blocked",
+            text = "Allah sees you. Tap to continue.",
+            onRefused = { performGlobalAction(GLOBAL_ACTION_HOME) }
         )
     }
 

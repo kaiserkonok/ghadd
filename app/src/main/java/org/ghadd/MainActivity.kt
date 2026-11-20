@@ -1,9 +1,12 @@
 package org.ghadd
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.net.Uri
 import android.net.VpnService
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -31,6 +34,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -55,14 +59,86 @@ class MainActivity : ComponentActivity() {
     private val vpnConsent =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             if (it.resultCode == RESULT_OK) startVpn()
+            tick++
         }
+
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { tick++ }
+
+    /**
+     * Everything Ghadd needs, in order. The app walks through these one at a time on its own,
+     * so the user only ever has to tap "Continue" and then "Allow" / switch ON.
+     */
+    private fun setupSteps(): List<SetupStep> = buildList {
+        add(SetupStep(
+            "filter", "Turn on the porn filter", "On the next screen, tap OK.",
+            done = { Prefs.filterWanted && VpnService.prepare(this@MainActivity) == null },
+            open = ::enableFilter
+        ))
+        if (Build.VERSION.SDK_INT >= 33) add(SetupStep(
+            "notifications", "Allow Ghadd's alerts", "On the next screen, tap Allow.",
+            done = {
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            },
+            open = { notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }
+        ))
+        add(SetupStep(
+            "overlay", "Let Ghadd show the Quran screen",
+            "On the next screen, find Ghadd and turn the switch ON. Then press back.",
+            done = { Perms.overlayGranted(this@MainActivity) },
+            open = { runCatching { startActivity(Perms.overlaySettingsIntent(this@MainActivity)) } }
+        ))
+        add(SetupStep(
+            "accessibility", "Turn on app blocking",
+            "On the next screen, tap \"Ghadd\" (it may be under \"Downloaded apps\" or \"Installed services\"), " +
+                "turn it ON and tap Allow. Then press back.",
+            done = { Perms.accessibilityEnabled(this@MainActivity) },
+            open = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        ))
+        add(SetupStep(
+            "updates", "Allow automatic updates", "On the next screen, turn the switch ON. Then press back.",
+            done = { Updater.canInstall(this@MainActivity) },
+            open = {
+                startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+            }
+        ))
+        add(SetupStep(
+            "battery", "Keep Ghadd running", "On the next screen, tap Allow.",
+            done = { KeepAlive.ignoringBatteryOptimizations(this@MainActivity) },
+            open = { runCatching { startActivity(KeepAlive.batteryIntent(this@MainActivity)) } }
+        ))
+        if (KeepAlive.hasOemRestrictions) {
+            add(SetupStep(
+                "popup", "Let Ghadd pop up over other apps",
+                "On the next screen, find \"Display pop-up windows\" (or \"Pop-up in background\") and set it to Allow. Then press back.",
+                done = { Prefs.setupDone("popup") },
+                open = { Prefs.markSetupDone("popup"); KeepAlive.openPopupPermission(this@MainActivity) }
+            ))
+            add(SetupStep(
+                "autostart", "Let Ghadd start by itself",
+                "On the next screen, find Ghadd and turn it ON (Autostart / Background startup). Then press back.",
+                done = { Prefs.setupDone("autostart") },
+                open = { Prefs.markSetupDone("autostart"); KeepAlive.openBackgroundSettings(this@MainActivity) }
+            ))
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             GhaddTheme {
                 var showApps by remember { mutableStateOf(false) }
-                if (showApps) {
+                var skipped by remember { mutableStateOf(setOf<String>()) }
+                val steps = remember(tick) { setupSteps() }
+                val next = steps.firstOrNull { !it.done() && it.id !in skipped }
+                if (next != null) {
+                    SetupScreen(
+                        number = steps.indexOf(next) + 1,
+                        total = steps.size,
+                        step = next,
+                        onSkip = { skipped = skipped + next.id }
+                    )
+                } else if (showApps) {
                     AppsScreen(tick, onBack = { showApps = false }, onTryRemove = ::askRemove)
                 } else {
                     HomeScreen(
@@ -119,6 +195,36 @@ class MainActivity : ComponentActivity() {
                 .putExtra(UnblockActivity.EXTRA_PKG, pkg)
                 .putExtra(UnblockActivity.EXTRA_REMOVE, true)
         )
+    }
+}
+
+private class SetupStep(
+    val id: String,
+    val title: String,
+    val hint: String,
+    val done: () -> Boolean,
+    val open: () -> Unit
+)
+
+/** One permission at a time, one big button. */
+@Composable
+private fun SetupScreen(number: Int, total: Int, step: SetupStep, onSkip: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(28.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("Setup $number of $total", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(12.dp))
+        Text(step.title, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(16.dp))
+        Text(step.hint, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
+        Spacer(Modifier.height(32.dp))
+        Button(onClick = step.open, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Continue") }
+        Spacer(Modifier.height(8.dp))
+        TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) { Text("Skip for now") }
     }
 }
 

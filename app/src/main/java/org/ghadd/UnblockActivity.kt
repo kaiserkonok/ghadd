@@ -1,5 +1,6 @@
 package org.ghadd
 
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -100,8 +101,23 @@ class UnblockActivity : ComponentActivity() {
         } else {
             Prefs.unlock(pkg, minutes)
             Prefs.addLog(kind, label, minutes)
+            // We sent them to the home screen when the app was blocked; open it again now.
+            packageManager.getLaunchIntentForPackage(pkg)?.let {
+                runCatching { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            }
         }
         finish()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ScreenState.visible = "unblock"
+        Launcher.clearAlert(this)
+    }
+
+    override fun onPause() {
+        if (ScreenState.visible == "unblock") ScreenState.visible = null
+        super.onPause()
     }
 
     override fun onDestroy() {
