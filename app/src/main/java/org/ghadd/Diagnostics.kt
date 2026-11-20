@@ -83,7 +83,7 @@ object Diagnostics {
     }.getOrDefault(emptyList())
 
     /** The hostname if Private DNS is in "strict" mode on the real network, else null. */
-    private fun privateDns(ctx: Context): String? {
+    fun privateDns(ctx: Context): String? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return null
         val cm = ctx.getSystemService(ConnectivityManager::class.java)
         @Suppress("DEPRECATION")

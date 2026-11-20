@@ -19,6 +19,11 @@ object Prefs {
         if (!sp.contains("first_run")) {
             sp.edit().putLong("first_run", System.currentTimeMillis()).apply()
         }
+        // People who set Ghadd up before the guided setup existed already have the filter on;
+        // don't send them through it again. Decided once, so quitting mid-setup can't skip it.
+        if (!sp.contains("setup_finished")) {
+            sp.edit().putBoolean("setup_finished", filterWanted).apply()
+        }
     }
 
     /** True once the user has turned the porn filter on; used to restart it after reboot/update. */
@@ -26,6 +31,28 @@ object Prefs {
         get() = sp.getBoolean("filter_wanted", false)
         set(value) {
             sp.edit().putBoolean("filter_wanted", value).apply()
+        }
+
+    /** True once the guided setup has been finished (or walked through). */
+    var setupFinished: Boolean
+        get() = sp.getBoolean("setup_finished", false)
+        set(value) {
+            sp.edit().putBoolean("setup_finished", value).apply()
+        }
+
+    /** Setup steps the user chose to skip during the guided setup. */
+    val skippedSteps: Set<String>
+        get() = sp.getStringSet("setup_skipped", emptySet())!!.toSet()
+
+    fun skipStep(id: String) {
+        sp.edit().putStringSet("setup_skipped", HashSet(skippedSteps + id)).apply()
+    }
+
+    /** Android only shows the notification prompt twice; after that we open settings instead. */
+    var notificationsAsked: Int
+        get() = sp.getInt("notif_asked", 0)
+        set(value) {
+            sp.edit().putInt("notif_asked", value).apply()
         }
 
     /** Setup steps that Android can't verify (phone-maker screens): done once the user visited them. */

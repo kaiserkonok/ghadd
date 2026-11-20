@@ -27,7 +27,12 @@ fun GhaddTheme(content: @Composable () -> Unit) {
             onSurface = Color(0xFFE6F2EE),
             surfaceVariant = Color(0xFF1E322C),
             onSurfaceVariant = Color(0xFFB8CCC5),
-            error = Color(0xFFFFB4A8)
+            outline = Color(0xFF3A524A),
+            // Amber: "needs attention"
+            tertiary = Color(0xFFF2C46D),
+            onTertiary = Color(0xFF2B1D00),
+            error = Color(0xFFFFB4A8),
+            onError = Color(0xFF5C1008)
         ),
         content = content
     )
